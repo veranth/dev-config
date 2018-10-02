@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# https://ohmyz.sh
+sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+
+# Add separate file for aliases
+grep -q -F 'source ~/.aliases' ~/.zshrc || echo 'source ~/.aliases' >> ~/.zshrc
+
+if [ ! -f ~/.aliases ]; then
+    cp .aliases ~/.aliases
+fi
+
+grep -q -F 'source ~/.aliases' ~/.zshrc || echo 'source ~/.aliases' >> .zshrc
+
+## Install Homebrew
+# https://brew.sh
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+brew install jq kops kubernetes-cli packer terraform sqlite
+
+## Install Python 3
+
+pip install jmespath-terminal
+
+# replace zsh theme .zshr
+# ZSH_THEME="geoffgarside"
+
+## Install NVM and node
