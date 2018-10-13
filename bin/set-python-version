@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import subprocess
+import shutil
+
+"""
+Update symbolic links (python, pip) to point to version specified.
+Since poetry relies on the python version on which it was installed for creating
+virtual environments, poetry is also reinstalled with the specified python version.
+
+Assumes python installed via package from python.org
+Only tested on Mac OS
+
+Example
+$ set-python-version 3.6
+"""
+
+def help():
+    print("""
+Create symbolic links to specific python and pip versions.
+Install Poetry for package and virtual environment management.
+Python must already be installed.
+
+$ set-python-version <major.minor> [poetry=version]
+$ set-python-version 3.6
+$ set-python-versoin 3.7 poetry==0.11.5
+
+Current Versions:""")
+    verify_install('poetry --version')
+    verify_install('python --version')
+    verify_install('pip --version')
+    sys.exit()
+
+def get_path(script, version):
+    path = shutil.which(script + version)
+    if path:
+        return path
+    else:
+        return None
+
+def get_current_version():
+    try:
+        return str(sys.version_info[0]) + '.' + str(sys.version_info[1])
+    except Exception as e:
+        raise e
+
+def get_new_version():
+    if len(sys.argv) < 2:
+        help()
+    temp_version = sys.argv[1]
+    python_path = shutil.which('python' + str(temp_version))
+    if python_path:
+        return temp_version
+    else:
+        print("Python {} is not installed.".format(sys.argv[1]))
+        sys.exit()
+
+def update_poetry(version, action):
+    if action == 'uninstall':
+        proc = subprocess.Popen(["pip" + version, action, "-y", "poetry"])
+    elif len(sys.argv) == 3:
+        proc = subprocess.Popen(["pip" + version, 'install', sys.argv[2]])
+    else:
+        proc = subprocess.Popen(["pip" + version, action, "poetry"])
+
+    try:
+        outs, errs = proc.communicate(timeout=40)
+    except TimeoutExpired:
+        proc.kill()
+        outs, errs = proc.communicate()
+
+def verify_install(command):
+    p = os.popen(command)
+    result = p.read()
+    print("{}".format(result.strip()))
+    p.close()
+
+
+new_version = get_new_version()
+current_version = get_current_version()
+minor_version = new_version.split('.')[0]
+
+if current_version != new_version:
+    versions = [
+        {"src": get_path('python', new_version), "dest": get_path('python', '')},
+        {"src": get_path('pip', new_version), "dest": get_path('pip', '')},
+        {"src": get_path('python', new_version), "dest": get_path('python', minor_version)},
+        {"src": get_path('pip', new_version), "dest": get_path('pip', minor_version)}
+    ]
+
+    update_poetry(current_version, 'uninstall')
+    for ver in versions:
+        if os.path.isfile(ver['dest']):
+            os.unlink(ver['dest'])
+        os.symlink(ver['src'], ver['dest'])
+    update_poetry(new_version, 'install')
+
+    verify_install('python --version')
+    verify_install('pip --version')
+    verify_install('poetry --version')
+else:
+    print("python is already linked to python{}".format(new_version))
